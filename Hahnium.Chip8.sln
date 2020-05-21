@@ -1,0 +1,48 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30011.22
+MinimumVisualStudioVersion = 15.0.26124.0
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Roms", "Roms", "{BA53B4FD-32E8-457C-BD80-2AD5DC300D08}"
+	ProjectSection(SolutionItems) = preProject
+		Roms\15PUZZLE = Roms\15PUZZLE
+		Roms\BLINKY = Roms\BLINKY
+		Roms\BLITZ = Roms\BLITZ
+		Roms\BRIX = Roms\BRIX
+		Roms\CONNECT4 = Roms\CONNECT4
+		Roms\GUESS = Roms\GUESS
+		Roms\HIDDEN = Roms\HIDDEN
+		Roms\INVADERS = Roms\INVADERS
+		Roms\KALEID = Roms\KALEID
+		Roms\MAZE = Roms\MAZE
+		Roms\MERLIN = Roms\MERLIN
+		Roms\MISSILE = Roms\MISSILE
+		Roms\PONG = Roms\PONG
+		Roms\PONG2 = Roms\PONG2
+		Roms\PUZZLE = Roms\PUZZLE
+		Roms\SYZYGY = Roms\SYZYGY
+		Roms\TANK = Roms\TANK
+		Roms\TETRIS = Roms\TETRIS
+		Roms\TICTAC = Roms\TICTAC
+		Roms\UFO = Roms\UFO
+		Roms\VBRIX = Roms\VBRIX
+		Roms\VERS = Roms\VERS
+		Roms\WIPEOFF = Roms\WIPEOFF
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6D5C727D-D803-4DD4-89FC-243DD82101A4}
+	EndGlobalSection
+EndGlobal
