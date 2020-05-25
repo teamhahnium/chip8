@@ -12,7 +12,7 @@ namespace Hahnium.Chip8
 
             while (true)
             {
-                platform.Tick();
+                platform.Cycle();
             }
         }
 

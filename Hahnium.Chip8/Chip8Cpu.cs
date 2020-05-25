@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Buffers;
-using System.Data;
 
 namespace Hahnium.Chip8
 {
@@ -8,12 +7,12 @@ namespace Hahnium.Chip8
     {
         private const ushort OperandsMask = 0x0fff;
         private Memory<byte> ram;
-        private MemoryHandle memoryhandle;
-        byte[] registers = new byte[0x10];
-        ushort address;
-        ushort pc = 0x200;
-        ushort[] stack = new ushort[48];
-        byte sp = 0;
+        public MemoryHandle memoryhandle;
+        public byte[] Registers = new byte[0x10];
+        public ushort pc = 0x200;
+        public ushort address;
+        public ushort[] stack = new ushort[48];
+        public byte sp = 0;
 
         public Chip8Cpu(Memory<byte> ram)
         {
@@ -21,7 +20,7 @@ namespace Hahnium.Chip8
             this.memoryhandle = ram.Pin();
         }
 
-        public unsafe void Tick()
+        public unsafe void Cycle()
         {
             byte* memory = (byte*)memoryhandle.Pointer;
             ushort opcode = (ushort)((*(memory + pc++) << 8) | *(memory + pc++));
