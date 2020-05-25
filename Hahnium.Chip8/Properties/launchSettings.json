@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Hahnium.Chip8": {
+      "commandName": "Project",
+      "commandLineArgs": "\"C:\\Users\\ericc\\Source\\Repos\\teamhahnium\\chip8\\Roms\\Breakout [Carmelo Cortez, 1979].ch8\""
+    }
+  }
+}
