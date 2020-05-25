@@ -1,9 +1,120 @@
-﻿namespace Hahnium.Chip8
+﻿using System;
+using System.Diagnostics;
+
+namespace Hahnium.Chip8
 {
     internal class Chip8Ppu
     {
-        public Chip8Ppu(System.Memory<byte> ram)
+        private const char BlockUpper = '▀';
+        private const char BlockLower = '▄';
+        private const char BlockFull = '█';
+        private char[] Blocks = new[] { ' ', BlockLower, BlockUpper, BlockFull };
+        private const int DisplayWidth = 64;
+        private const int DisplayHeight = 32;
+        private byte[] frameBuffer = new byte[DisplayWidth * DisplayHeight];
+        private Chip8Cpu cpu;
+
+        public Chip8Ppu(Chip8Cpu cpu, Memory<byte> ram)
         {
+            this.cpu = cpu;
+            /* Display design *
+            ╔══════════════════════════════════════════════════════════════╗ Addr  Op
+            ║                                                              ║ #FFFF $FFFF
+            ║                                                              ║ #FFFF $FFFF
+            ║                                                              ║ #FFFF $FFFF
+            ║                                                              ║ #FFFF $FFFF
+            ║                                                              ║ #FFFF $FFFF
+            ║                                                              ║ #FFFF $FFFF
+            ║                   Display 64x32 (64c, 16r)                   ║ #FFFF $FFFF
+            ║                                                              ║ #FFFF $FFFF
+            ║                                                              ║ #FFFF $FFFF
+            ║                                                              ║ #FFFF $FFFF
+            ║                                                              ║ #FFFF $FFFF
+            ║                                                              ║ #FFFF $FFFF
+            ║                                                              ║ #FFFF $FFFF
+            ║                                                              ║ #FFFF $FFFF
+            ╚══════════════════════════════════════════════════════════════╝ #FFFF $FFFF
+            V0 $FF   V4 $FF   V8 $FF   VC $FF   A  #FFFF
+            V1 $FF   V5 $FF   V9 $FF   VD $FF   PC #FFFF
+            V2 $FF   V6 $FF   VA $FF   VE $FF   
+            V3 $FF   V7 $FF   VB $FF   VF $FF   SP #FFFF
+            */
+            Console.SetWindowSize(80, 25);
+            Console.CursorVisible = false;
+        }
+
+        int cycleCount = 0;
+        Stopwatch timer = Stopwatch.StartNew();
+
+        internal void Cycle()
+        {
+            // Test animation
+            for (int y = 0; y < DisplayHeight; y++)
+            {
+                for (int x = 0; x < DisplayWidth; x++)
+                {
+                    int offset = (y * DisplayWidth) + x;
+                    frameBuffer[offset] = (byte)(((offset + cycleCount + y) % 8) == 1 ? 1 : 0);
+                }
+            }
+
+            Console.SetCursorPosition(0, 0);
+            Console.Write(@$"{RenderRow(0)} Addr  Op
+{RenderRow(2)}  {RenderProgramCounter(-7)}
+{RenderRow(4)}  {RenderProgramCounter(-6)}
+{RenderRow(6)}  {RenderProgramCounter(-5)}
+{RenderRow(8)}  {RenderProgramCounter(-4)}
+{RenderRow(10)}  {RenderProgramCounter(-3)}
+{RenderRow(12)}  {RenderProgramCounter(-2)}
+{RenderRow(14)}  {RenderProgramCounter(-1)}
+{RenderRow(16)} >{RenderProgramCounter(0)}
+{RenderRow(18)}  {RenderProgramCounter(1)}
+{RenderRow(20)}  {RenderProgramCounter(2)}
+{RenderRow(22)}  {RenderProgramCounter(3)}
+{RenderRow(24)}  {RenderProgramCounter(4)}
+{RenderRow(26)}  {RenderProgramCounter(5)}
+{RenderRow(28)}  {RenderProgramCounter(6)}
+{RenderRow(30)}  {RenderProgramCounter(7)}
+{RenderRegister(0)}   {RenderRegister(4)}   {RenderRegister(8)}   {RenderRegister(12)}   {RenderAddress()}
+{RenderRegister(1)}   {RenderRegister(5)}   {RenderRegister(9)}   {RenderRegister(13)}   {RenderPC()}
+{RenderRegister(2)}   {RenderRegister(6)}   {RenderRegister(10)}   {RenderRegister(14)}   {RenderSP()}
+{RenderRegister(3)}   {RenderRegister(7)}   {RenderRegister(11)}   {RenderRegister(15)}
+FPS {++cycleCount / timer.Elapsed.TotalSeconds}");
+
+            if(timer.Elapsed.TotalSeconds > 1.0)
+            {
+                timer = Stopwatch.StartNew();
+                cycleCount = 0;
+            }
+        }
+
+        private string RenderRegister(int register) => $"V{register:X} ${this.cpu.Registers[register]:X2}";
+
+        private string RenderAddress() => $"A  #{this.cpu.address:X4}";
+
+        private string RenderPC() => $"PC #{this.cpu.pc:X4}";
+
+        private string RenderSP() => $"SP #{this.cpu.sp:X4}";
+
+        private unsafe string RenderProgramCounter(short pcOffset)
+        {
+            ushort address = (ushort)((pcOffset << 1) + this.cpu.pc);
+            var value = *(((byte*)this.cpu.memoryhandle.Pointer) + address);
+            return $"#{address:X4} ${value:X4}";
+        }
+
+        private string RenderRow(int rowIndex)
+        {
+            var row = new char[DisplayWidth];
+
+            for (int i = 0; i < DisplayWidth; i++)
+            {
+                byte upper = frameBuffer[(DisplayWidth * rowIndex) + i];
+                byte lower = frameBuffer[(DisplayWidth * (rowIndex + 1)) + i];
+                row[i] = Blocks[(upper << 1) | lower];
+            }
+
+            return new string(row);
         }
     }
 }

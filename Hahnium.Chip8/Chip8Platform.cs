@@ -15,12 +15,13 @@ namespace Hahnium.Chip8
             romImage.CopyTo(this.ram.Slice(0x200));
             this.cpu = new Chip8Cpu(this.ram);
             this.apu = new Chip8Apu(this.ram);
-            this.ppu = new Chip8Ppu(this.ram);
+            this.ppu = new Chip8Ppu(this.cpu, this.ram);
         }
 
-        public void Tick()
+        public void Cycle()
         {
-            this.cpu.Tick();
+            this.cpu.Cycle();
+            this.ppu.Cycle();
         }
     }
 }
