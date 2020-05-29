@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace Hahnium.Chip8
 {
-    internal class Chip8Ppu
+    public unsafe class Chip8Ppu
     {
         private const char BlockUpper = '▀';
         private const char BlockLower = '▄';
@@ -11,12 +11,13 @@ namespace Hahnium.Chip8
         private char[] Blocks = new[] { ' ', BlockLower, BlockUpper, BlockFull };
         private const int DisplayWidth = 64;
         private const int DisplayHeight = 32;
-        private byte[] frameBuffer = new byte[DisplayWidth * DisplayHeight];
-        private Chip8Cpu cpu;
+        public byte[] frameBuffer = new byte[DisplayWidth * DisplayHeight];
+        private Chip8Platform platform;
+        private Chip8Cpu cpu => this.platform.cpu;
 
-        public Chip8Ppu(Chip8Cpu cpu, Memory<byte> ram)
+        public Chip8Ppu(Chip8Platform platform)
         {
-            this.cpu = cpu;
+            this.platform = platform;
             /* Display design *
             ╔══════════════════════════════════════════════════════════════╗ Addr  Op
             ║                                                              ║ #FFFF $FFFF
@@ -49,14 +50,14 @@ namespace Hahnium.Chip8
         internal void Cycle()
         {
             // Test animation
-            for (int y = 0; y < DisplayHeight; y++)
-            {
-                for (int x = 0; x < DisplayWidth; x++)
-                {
-                    int offset = (y * DisplayWidth) + x;
-                    frameBuffer[offset] = (byte)(((offset + cycleCount + y) % 8) == 1 ? 1 : 0);
-                }
-            }
+            //for (int y = 0; y < DisplayHeight; y++)
+            //{
+            //    for (int x = 0; x < DisplayWidth; x++)
+            //    {
+            //        int offset = (y * DisplayWidth) + x;
+            //        frameBuffer[offset] = (byte)(((offset + cycleCount + y) % 8) == 1 ? 1 : 0);
+            //    }
+            //}
 
             Console.SetCursorPosition(0, 0);
             Console.Write(@$"{RenderRow(0)} Addr  Op
@@ -81,25 +82,54 @@ namespace Hahnium.Chip8
 {RenderRegister(3)}   {RenderRegister(7)}   {RenderRegister(11)}   {RenderRegister(15)}
 FPS {++cycleCount / timer.Elapsed.TotalSeconds}");
 
-            if(timer.Elapsed.TotalSeconds > 1.0)
+            if (timer.Elapsed.TotalSeconds > 1.0)
             {
                 timer = Stopwatch.StartNew();
                 cycleCount = 0;
             }
         }
 
-        private string RenderRegister(int register) => $"V{register:X} ${this.cpu.Registers[register]:X2}";
+        public bool Draw(byte xPosition, byte yPosition, Memory<byte> spriteMemory)
+        {
+            bool bitFlipped = false;
+            using var spriteHandle = spriteMemory.Pin();
+            var sprite = (byte*)spriteHandle.Pointer;
 
-        private string RenderAddress() => $"A  #{this.cpu.address:X4}";
+            for (int y = yPosition; y < yPosition + spriteMemory.Length; y++)
+            {
+                byte spriteLine = *sprite;
 
-        private string RenderPC() => $"PC #{this.cpu.pc:X4}";
+                for (int x = xPosition; x < xPosition + 8; x++)
+                {
+                    byte pixel = frameBuffer[(y * DisplayWidth) + x];
+                    var spritePixel = (spriteLine & 0b1000_0000) >> 7;
+                    spriteLine <<= 1;
+
+                    if (!bitFlipped && pixel > 0 && spritePixel > 0)
+                    {
+                        bitFlipped = true;
+                    }
+
+                    frameBuffer[(y * DisplayWidth) + x] = (byte)(pixel ^ spritePixel);
+                }
+            }
+
+            return bitFlipped;
+        }
+
+        private unsafe string RenderRegister(int register) => $"V{register:X} ${this.cpu.Registers.Variables[register]:X2}";
+
+        private string RenderAddress() => $"A  #{this.cpu.Registers.Index:X4}";
+
+        private string RenderPC() => $"PC #{this.cpu.Registers.PC:X4}";
 
         private string RenderSP() => $"SP #{this.cpu.sp:X4}";
 
         private unsafe string RenderProgramCounter(short pcOffset)
         {
-            ushort address = (ushort)((pcOffset << 1) + this.cpu.pc);
-            var value = *(((byte*)this.cpu.memoryhandle.Pointer) + address);
+            ushort address = (ushort)((pcOffset << 1) + this.cpu.Registers.PC);
+            var value = *(ushort*)(((byte*)this.cpu.memoryhandle.Pointer) + address);
+            value = (ushort)((value << 8) | (value >> 8));
             return $"#{address:X4} ${value:X4}";
         }
 
