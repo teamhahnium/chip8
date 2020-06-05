@@ -2,7 +2,7 @@
   "profiles": {
     "Hahnium.Chip8": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Users\\ericc\\Source\\Repos\\teamhahnium\\chip8\\Roms\\Breakout [Carmelo Cortez, 1979].ch8\""
+      "commandLineArgs": "\"C:\\Users\\ericc\\Source\\Repos\\teamhahnium\\chip8\\Roms\\test_opcode.ch8\" \"C:\\Users\\ericc\\Source\\Repos\\teamhahnium\\chip8\\Roms\\MAZE\"  \"C:\\Users\\ericc\\Source\\Repos\\teamhahnium\\chip8\\Roms\\Breakout [Carmelo Cortez, 1979].ch8\""
     }
   }
 }

@@ -74,7 +74,7 @@ namespace Hahnium.Chip8
                 case 0xD:
                     OpD(operands);
                     break;
-                default: throw new NotImplementedException();
+                //default: throw new NotImplementedException();
             }
         }
 

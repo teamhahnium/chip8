@@ -5,6 +5,7 @@ namespace Hahnium.Chip8
 {
     public unsafe class Chip8Ppu
     {
+        private const byte MSB = 0b1000_0000;
         private const char BlockUpper = '▀';
         private const char BlockLower = '▄';
         private const char BlockFull = '█';
@@ -14,6 +15,8 @@ namespace Hahnium.Chip8
         public byte[] frameBuffer = new byte[DisplayWidth * DisplayHeight];
         private Chip8Platform platform;
         private Chip8Cpu cpu => this.platform.cpu;
+
+        public bool TestMode { get; set; } = false;
 
         public Chip8Ppu(Chip8Platform platform)
         {
@@ -49,15 +52,18 @@ namespace Hahnium.Chip8
 
         internal void Cycle()
         {
-            // Test animation
-            //for (int y = 0; y < DisplayHeight; y++)
-            //{
-            //    for (int x = 0; x < DisplayWidth; x++)
-            //    {
-            //        int offset = (y * DisplayWidth) + x;
-            //        frameBuffer[offset] = (byte)(((offset + cycleCount + y) % 8) == 1 ? 1 : 0);
-            //    }
-            //}
+            if (TestMode)
+            {
+                // Test animation
+                for (int y = 0; y < DisplayHeight; y++)
+                {
+                    for (int x = 0; x < DisplayWidth; x++)
+                    {
+                        int offset = (y * DisplayWidth) + x;
+                        frameBuffer[offset] = (byte)(((offset + cycleCount + y) % 8) == 1 ? 1 : 0);
+                    }
+                }
+            }
 
             Console.SetCursorPosition(0, 0);
             Console.Write(@$"{RenderRow(0)} Addr  Op
@@ -101,8 +107,15 @@ FPS {++cycleCount / timer.Elapsed.TotalSeconds}");
 
                 for (int x = xPosition; x < xPosition + 8; x++)
                 {
+                    int pixelId = (y * DisplayWidth) + x;
+
+                    if (pixelId >= frameBuffer.Length || pixelId < 0)
+                    {
+                        continue;
+                    }
+
                     byte pixel = frameBuffer[(y * DisplayWidth) + x];
-                    var spritePixel = (spriteLine & 0b1000_0000) >> 7;
+                    var spritePixel = (spriteLine & MSB) >> 7;
                     spriteLine <<= 1;
 
                     if (!bitFlipped && pixel > 0 && spritePixel > 0)
