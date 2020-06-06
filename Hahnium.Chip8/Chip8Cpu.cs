@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Buffers;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Hahnium.Chip8
 {
@@ -15,6 +17,7 @@ namespace Hahnium.Chip8
         private Random rand = new Random();
         private Chip8Platform platform;
         private const ushort OperandsMask = 0x0fff;
+        private Task inputTask;
         public MemoryHandle memoryhandle;
         public ushort[] stack = new ushort[48];
         public byte sp = 0;
@@ -27,6 +30,26 @@ namespace Hahnium.Chip8
         {
             this.platform = platform;
             this.memoryhandle = platform.ram.Pin();
+            inputTask = Task.Factory.StartNew(InputLoop);
+        }
+
+        private char[] keyboardMap = new char[]
+        {
+            'z', 'x', 'c', 'v', 'a', 's', 'd', 'f', 'q', 'w', 'e', 'r', '1', '2', '3', '4'
+        };
+
+        private AutoResetEvent keyBlock = new AutoResetEvent(false);
+        private byte lastKey = byte.MaxValue;
+
+        public void InputLoop()
+        {
+            while (true)
+            {
+                var key = Console.ReadKey(true);
+                lastKey = (byte)Array.IndexOf(keyboardMap, key.KeyChar);
+                keyBlock.Set();
+                keyBlock.Reset();
+            }
         }
 
         public unsafe void Cycle()
@@ -65,6 +88,9 @@ namespace Hahnium.Chip8
                 case 8:
                     Op8(operands);
                     break;
+                case 9:
+                    Op9(operands);
+                    break;
                 case 0xA:
                     OpA(operands);
                     break;
@@ -74,7 +100,13 @@ namespace Hahnium.Chip8
                 case 0xD:
                     OpD(operands);
                     break;
-                //default: throw new NotImplementedException();
+                case 0xE:
+                    OpE(operands);
+                    break;
+                case 0xF:
+                    OpF(operands);
+                    break;
+                default: throw new NotImplementedException();
             }
         }
 
@@ -169,15 +201,35 @@ namespace Hahnium.Chip8
 
             switch (operation)
             {
+                case 0:
+                    // Vx=Vy	Sets VX to the value of VY.
+                    this.Registers.Variables[variableX] = this.Registers.Variables[variableY];
+                    break;
                 case 2:
                     // Vx = Vx & Vy    Sets VX to VX and VY. (Bitwise AND operation)
                     this.Registers.Variables[variableX] &= this.Registers.Variables[variableY];
+                    break;
+                case 4:
+                    //Vx += Vy	Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
+                    this.Registers.Variables[variableX] += this.Registers.Variables[variableY];
                     break;
                 case 8:
                     // Vx=Vx|Vy Sets VX to VX or VY. (Bitwise OR operation)
                     this.Registers.Variables[variableX] |= this.Registers.Variables[variableY];
                     break;
                 default: throw new NotImplementedException();
+            }
+        }
+
+        private void Op9(ushort operands)
+        {
+            var x = this.Registers.Variables[operands.GetNibble(2)];
+            var y = this.Registers.Variables[operands.GetNibble(1)];
+
+            // 9XY0 ->	if(Vx!=Vy)	Skips the next instruction if VX doesn't equal VY. (Usually the next instruction is a jump to skip a code block)
+            if (x != y)
+            {
+                this.Registers.PC += 2;
             }
         }
 
@@ -210,6 +262,64 @@ namespace Hahnium.Chip8
             else
             {
                 this.Registers.Variables[0xF] = 0;
+            }
+        }
+
+        private void OpE(ushort operands)
+        {
+            var x = this.Registers.Variables[operands.GetNibble(2)];
+
+            switch (operands.GetByte(0))
+            {
+                case 0x9E:
+                    // EX9E KeyOp   if (key() == Vx) Skips the next instruction if the key stored in VX is pressed. (Usually the next instruction is a jump to skip a code block)
+                    if (lastKey == x)
+                    {
+                        this.Registers.PC += 2;
+                    }
+                    break;
+                case 0xA1:
+                    // EXA1 KeyOp   if (key() != Vx) Skips the next instruction if the key stored in VX isn't pressed. (Usually the next instruction is a jump to skip a code block)
+                    if (lastKey != x)
+                    {
+                        this.Registers.PC += 2;
+                    }
+                    break;
+                default: throw new NotImplementedException();
+            }
+        }
+
+        private void OpF(ushort operands)
+        {
+            var lsb = operands.GetByte(0);
+            var x = operands.GetNibble(2);
+
+            switch (lsb)
+            {
+                case 0x0A:
+                    // Vx = get_key()	A key press is awaited, and then stored in VX. (Blocking Operation. All instruction halted until next key event)
+                    this.keyBlock.WaitOne();
+                    break;
+                case 0x18:
+                    // TODO: better beep here
+                    Console.Beep(420, 15);
+                    break;
+                case 0x1E:
+                    // I += Vx  Adds VX to I. VF is set to 1 when there is a range overflow(I + VX > 0xFFF), and to 0 when there isn't.[c]
+                    var newIndex = this.Registers.Index + this.Registers.Variables[x];
+                    this.Registers.Variables[0xF] = (byte)((newIndex > ushort.MaxValue) ? 1 : 0);
+                    this.Registers.Index = (ushort)newIndex;
+                    break;
+                case 0x65:
+                    // reg_load(Vx,&I)	Fills V0 to VX (including VX) with values from memory starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified.
+
+                    byte* memoryPointer = ((byte*)memoryhandle.Pointer) + this.Registers.Index;
+                    fixed (void* vPtr = this.Registers.Variables)
+                    {
+                        Buffer.MemoryCopy(memoryPointer, vPtr, 16, 16);
+                    }
+                    break;
+                default: throw new NotImplementedException();
             }
         }
     }
