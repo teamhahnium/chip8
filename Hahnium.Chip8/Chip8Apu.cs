@@ -1,8 +1,8 @@
 ﻿namespace Hahnium.Chip8
 {
-    internal class Chip8Apu
+    public class Chip8Apu
     {
-        public Chip8Apu(System.Memory<byte> ram)
+        public Chip8Apu(Chip8Platform platform)
         {
         }
     }
