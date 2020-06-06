@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -7,10 +8,16 @@ namespace Hahnium.Chip8
 {
     public unsafe class Chip8Cpu
     {
+        [StructLayout(LayoutKind.Explicit)]
         public unsafe struct CpuRegisters
         {
+            [FieldOffset(0)]
             public fixed byte Variables[0x10];
+            [FieldOffset(15)]
+            public byte Carry;
+            [FieldOffset(16)]
             public ushort PC;
+            [FieldOffset(18)]
             public ushort Index;
         }
 
@@ -119,7 +126,11 @@ namespace Hahnium.Chip8
             }
             else if (operands == 0x00ee)
             {
-                // TODO: return
+                this.Registers.PC = this.stack[--sp];
+            }
+            else
+            {
+                throw new InvalidOperationException();
             }
         }
 
@@ -198,6 +209,7 @@ namespace Hahnium.Chip8
             var variableX = operands.GetNibble(2);
             var variableY = operands.GetNibble(1);
             var operation = operands.GetNibble(0);
+            int a;
 
             switch (operation)
             {
@@ -205,17 +217,45 @@ namespace Hahnium.Chip8
                     // Vx=Vy	Sets VX to the value of VY.
                     this.Registers.Variables[variableX] = this.Registers.Variables[variableY];
                     break;
+                case 1:
+                    // Vx=Vx|Vy	Sets VX to VX or VY. (Bitwise OR operation)
+                    this.Registers.Variables[variableX] |= this.Registers.Variables[variableY];
+                    break;
                 case 2:
                     // Vx = Vx & Vy    Sets VX to VX and VY. (Bitwise AND operation)
                     this.Registers.Variables[variableX] &= this.Registers.Variables[variableY];
                     break;
-                case 4:
-                    //Vx += Vy	Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
-                    this.Registers.Variables[variableX] += this.Registers.Variables[variableY];
+                case 3:
+                    // Vx=Vx^Vy	Sets VX to VX xor VY.
+                    this.Registers.Variables[variableX] ^= this.Registers.Variables[variableY];
                     break;
-                case 8:
-                    // Vx=Vx|Vy Sets VX to VX or VY. (Bitwise OR operation)
-                    this.Registers.Variables[variableX] |= this.Registers.Variables[variableY];
+                case 4:
+                    // Vx += Vy	Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
+                    a = this.Registers.Variables[variableX] + this.Registers.Variables[variableY];
+                    this.Registers.Carry = (byte)((a > ushort.MaxValue) ? 1 : 0);
+                    this.Registers.Variables[variableX] = (byte)a;
+                    break;
+                case 5:
+                    // Vx -= Vy	VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
+                    a = this.Registers.Variables[variableX] - this.Registers.Variables[variableY];
+                    this.Registers.Carry = (byte)((a > ushort.MaxValue) ? 1 : 0);
+                    this.Registers.Variables[variableX] = (byte)a;
+                    break;
+                case 6:
+                    // Vx>>=1	Stores the least significant bit of VX in VF and then shifts VX to the right by 1.
+                    this.Registers.Carry = (byte)(this.Registers.Variables[variableX] & 0x1);
+                    this.Registers.Variables[variableX] >>= 1;
+                    break;
+                case 7:
+                    // Vx=Vy-Vx	Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
+                    a = this.Registers.Variables[variableY] - this.Registers.Variables[variableX];
+                    this.Registers.Carry = (byte)((a > ushort.MaxValue) ? 1 : 0);
+                    this.Registers.Variables[variableX] = (byte)a;
+                    break;
+                case 0xE:
+                    // Vx<<=1	Stores the most significant bit of VX in VF and then shifts VX to the left by 1.[b]
+                    this.Registers.Carry = (byte)((this.Registers.Variables[variableX] >> 7) & 1);
+                    this.Registers.Variables[variableX] <<= 1;
                     break;
                 default: throw new NotImplementedException();
             }
@@ -310,15 +350,39 @@ namespace Hahnium.Chip8
                     this.Registers.Variables[0xF] = (byte)((newIndex > ushort.MaxValue) ? 1 : 0);
                     this.Registers.Index = (ushort)newIndex;
                     break;
+                case 0x33:
+                    // set_BCD(Vx); Stores the binary-coded decimal representation of VX, with the most significant of
+                    // three digits at the address in I, the middle digit at I plus 1, and the least significant digit
+                    // at I plus 2. (In other words, take the decimal representation of VX, place the hundreds digit in
+                    // memory at location in I, the tens digit at location I+1, and the ones digit at location I+2.)
+                    {
+                        var value = this.Registers.Variables[x];
+                        byte* memoryPointer = ((byte*)memoryhandle.Pointer) + this.Registers.Index;
+                        memoryPointer[0] = (byte)((value / 100) % 10);
+                        memoryPointer[1] = (byte)((value / 10) % 10);
+                        memoryPointer[2] = (byte)((value / 1) % 10);
+                        break;
+                    }
+                case 0x55:
+                    // reg_dump(Vx,&I)	Stores V0 to VX (including VX) in memory starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified.
+                    {
+                        byte* memoryPointer = ((byte*)memoryhandle.Pointer) + this.Registers.Index;
+                        fixed (void* vPtr = this.Registers.Variables)
+                        {
+                            Buffer.MemoryCopy(vPtr, memoryPointer, 16, 16);
+                        }
+                        break;
+                    }
                 case 0x65:
                     // reg_load(Vx,&I)	Fills V0 to VX (including VX) with values from memory starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified.
-
-                    byte* memoryPointer = ((byte*)memoryhandle.Pointer) + this.Registers.Index;
-                    fixed (void* vPtr = this.Registers.Variables)
                     {
-                        Buffer.MemoryCopy(memoryPointer, vPtr, 16, 16);
+                        byte* memoryPointer = ((byte*)memoryhandle.Pointer) + this.Registers.Index;
+                        fixed (void* vPtr = this.Registers.Variables)
+                        {
+                            Buffer.MemoryCopy(memoryPointer, vPtr, 16, 16);
+                        }
+                        break;
                     }
-                    break;
                 default: throw new NotImplementedException();
             }
         }
