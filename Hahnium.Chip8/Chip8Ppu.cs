@@ -125,6 +125,8 @@ FPS {++cycleCount / timer.Elapsed.TotalSeconds}");
 
                     frameBuffer[(y * DisplayWidth) + x] = (byte)(pixel ^ spritePixel);
                 }
+
+                sprite++;
             }
 
             return bitFlipped;
