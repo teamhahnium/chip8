@@ -369,7 +369,7 @@ namespace Hahnium.Chip8
                         byte* memoryPointer = ((byte*)memoryhandle.Pointer) + this.Registers.Index;
                         fixed (void* vPtr = this.Registers.Variables)
                         {
-                            Buffer.MemoryCopy(vPtr, memoryPointer, 16, 16);
+                            Buffer.MemoryCopy(vPtr, memoryPointer, x + 1, x + 1);
                         }
                         break;
                     }
@@ -379,7 +379,7 @@ namespace Hahnium.Chip8
                         byte* memoryPointer = ((byte*)memoryhandle.Pointer) + this.Registers.Index;
                         fixed (void* vPtr = this.Registers.Variables)
                         {
-                            Buffer.MemoryCopy(memoryPointer, vPtr, 16, 16);
+                            Buffer.MemoryCopy(memoryPointer, vPtr, x + 1, x + 1);
                         }
                         break;
                     }
