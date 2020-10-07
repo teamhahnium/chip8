@@ -19,6 +19,8 @@ namespace Hahnium.Chip8
             public ushort PC;
             [FieldOffset(18)]
             public ushort Index;
+            [FieldOffset(20)]
+            public byte Delay;
         }
 
         private Random rand = new Random();
@@ -232,13 +234,13 @@ namespace Hahnium.Chip8
                 case 4:
                     // Vx += Vy	Adds VY to VX. VF is set to 1 when there's a carry, and to 0 when there isn't.
                     a = this.Registers.Variables[variableX] + this.Registers.Variables[variableY];
-                    this.Registers.Carry = (byte)((a > ushort.MaxValue) ? 1 : 0);
+                    this.Registers.Carry = (byte)((a > 0xff) ? 1 : 0);
                     this.Registers.Variables[variableX] = (byte)a;
                     break;
                 case 5:
                     // Vx -= Vy	VY is subtracted from VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
                     a = this.Registers.Variables[variableX] - this.Registers.Variables[variableY];
-                    this.Registers.Carry = (byte)((a > ushort.MaxValue) ? 1 : 0);
+                    this.Registers.Carry = (byte)((a < 0) ? 0 : 1);
                     this.Registers.Variables[variableX] = (byte)a;
                     break;
                 case 6:
@@ -249,7 +251,7 @@ namespace Hahnium.Chip8
                 case 7:
                     // Vx=Vy-Vx	Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
                     a = this.Registers.Variables[variableY] - this.Registers.Variables[variableX];
-                    this.Registers.Carry = (byte)((a > ushort.MaxValue) ? 1 : 0);
+                    this.Registers.Carry = (byte)((a < 0) ? 0 : 1);
                     this.Registers.Variables[variableX] = (byte)a;
                     break;
                 case 0xE:
@@ -336,9 +338,17 @@ namespace Hahnium.Chip8
 
             switch (lsb)
             {
+                case 0x07:
+                    // Vx = get_delay()    Sets VX to the value of the delay timer.
+                    this.Registers.Variables[x] = this.Registers.Delay;
+                    break;
                 case 0x0A:
                     // Vx = get_key()	A key press is awaited, and then stored in VX. (Blocking Operation. All instruction halted until next key event)
                     this.keyBlock.WaitOne();
+                    break;
+                case 0x15:
+                    // delay_timer(Vx)	Sets the delay timer to VX.
+                    this.Registers.Delay = this.Registers.Variables[x];
                     break;
                 case 0x18:
                     // TODO: better beep here
@@ -349,6 +359,10 @@ namespace Hahnium.Chip8
                     var newIndex = this.Registers.Index + this.Registers.Variables[x];
                     this.Registers.Variables[0xF] = (byte)((newIndex > ushort.MaxValue) ? 1 : 0);
                     this.Registers.Index = (ushort)newIndex;
+                    break;
+                case 0x29:
+                    // I = sprite_addr[Vx]	Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font.
+                    this.Registers.Index = (ushort)(x * 5);
                     break;
                 case 0x33:
                     // set_BCD(Vx); Stores the binary-coded decimal representation of VX, with the most significant of
@@ -383,7 +397,7 @@ namespace Hahnium.Chip8
                         }
                         break;
                     }
-                default: throw new NotImplementedException();
+                default: break; //throw new NotImplementedException();
             }
         }
     }

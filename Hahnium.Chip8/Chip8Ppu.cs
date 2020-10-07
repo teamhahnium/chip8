@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Runtime.Versioning;
+using System.Threading;
 
 namespace Hahnium.Chip8
 {
@@ -48,10 +50,30 @@ namespace Hahnium.Chip8
         }
 
         int cycleCount = 0;
+        int frameCount = 0;
         Stopwatch timer = Stopwatch.StartNew();
+        Stopwatch lastFrame = Stopwatch.StartNew();
+        TimeSpan frameTime = TimeSpan.FromSeconds(1.0 / 60.0);
 
         internal void Cycle()
         {
+            if (cycleCount++ % 8 != 0)
+            {
+                // 500 instructions per frame
+                return;
+            }
+
+            frameCount++;
+
+            var frameDelay = frameTime - lastFrame.Elapsed;
+            if (frameDelay.TotalSeconds > 0)
+            {
+                Thread.Sleep(frameDelay);
+            }
+            lastFrame.Restart();
+
+            this.cpu.Registers.Delay--;
+
             if (TestMode)
             {
                 // Test animation
@@ -86,12 +108,14 @@ namespace Hahnium.Chip8
 {RenderRegister(1)}   {RenderRegister(5)}   {RenderRegister(9)}   {RenderRegister(13)}   {RenderPC()}
 {RenderRegister(2)}   {RenderRegister(6)}   {RenderRegister(10)}   {RenderRegister(14)}   {RenderSP()}
 {RenderRegister(3)}   {RenderRegister(7)}   {RenderRegister(11)}   {RenderRegister(15)}
-FPS {++cycleCount / timer.Elapsed.TotalSeconds}");
+Clock {cycleCount / timer.Elapsed.TotalSeconds}
+FPS {frameCount / timer.Elapsed.TotalSeconds}");
 
             if (timer.Elapsed.TotalSeconds > 1.0)
             {
-                timer = Stopwatch.StartNew();
+                timer.Restart();
                 cycleCount = 0;
+                frameCount = 0;
             }
         }
 
