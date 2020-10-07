@@ -362,7 +362,7 @@ namespace Hahnium.Chip8
                     break;
                 case 0x29:
                     // I = sprite_addr[Vx]	Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font.
-                    this.Registers.Index = (ushort)(x * 5);
+                    this.Registers.Index = (ushort)(this.Registers.Variables[x] * 5);
                     break;
                 case 0x33:
                     // set_BCD(Vx); Stores the binary-coded decimal representation of VX, with the most significant of
@@ -397,7 +397,7 @@ namespace Hahnium.Chip8
                         }
                         break;
                     }
-                default: break; //throw new NotImplementedException();
+                default: throw new NotImplementedException();
             }
         }
     }
