@@ -1,6 +1,7 @@
 ﻿using System;
+using System.Diagnostics;
 
-namespace Hahnium.Chip8
+namespace Chip8
 {
     public class Chip8Platform
     {
@@ -8,6 +9,8 @@ namespace Hahnium.Chip8
         public Chip8Apu apu;
         public Chip8Ppu ppu;
         public Memory<byte> ram;
+        public Stopwatch cpuTimer = new Stopwatch();
+        public Stopwatch ppuTimer = new Stopwatch();
 
         private ReadOnlyMemory<byte> font = new ReadOnlyMemory<byte>(new byte[] {
             // Font "0"
@@ -57,8 +60,12 @@ namespace Hahnium.Chip8
 
         public void Cycle()
         {
+            ppuTimer.Start();
             this.ppu.Cycle();
+            ppuTimer.Stop();
+            cpuTimer.Start();
             this.cpu.Cycle();
+            cpuTimer.Stop();
         }
     }
 }

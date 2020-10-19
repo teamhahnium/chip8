@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Hahnium.Chip8
+namespace Chip8
 {
     public static class Extensions
     {

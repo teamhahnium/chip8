@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Hahnium.Chip8
+namespace Chip8
 {
     public unsafe class Chip8Cpu
     {
@@ -42,9 +42,13 @@ namespace Hahnium.Chip8
             inputTask = Task.Factory.StartNew(InputLoop);
         }
 
-        private char[] keyboardMap = new char[]
+        private ConsoleKey[] keyboardMap = new ConsoleKey[]
         {
-            'z', 'x', 'c', 'v', 'a', 's', 'd', 'f', 'q', 'w', 'e', 'r', '1', '2', '3', '4'
+            ConsoleKey.Z, ConsoleKey.X, ConsoleKey.C, ConsoleKey.V,
+            ConsoleKey.A, ConsoleKey.S, ConsoleKey.D, ConsoleKey.F,
+            ConsoleKey.Q, ConsoleKey.W, ConsoleKey.E, ConsoleKey.R,
+            ConsoleKey.D1, ConsoleKey.D2, ConsoleKey.D3, ConsoleKey.D4,
+            //'z', 'x', 'c', 'v', 'a', 's', 'd', 'f', 'q', 'w', 'e', 'r', '1', '2', '3', '4'
         };
 
         private AutoResetEvent keyBlock = new AutoResetEvent(false);
@@ -55,7 +59,7 @@ namespace Hahnium.Chip8
             while (true)
             {
                 var key = Console.ReadKey(true);
-                lastKey = (byte)Array.IndexOf(keyboardMap, key.KeyChar);
+                lastKey = (byte)Array.IndexOf(keyboardMap, key.Key);
                 keyBlock.Set();
                 keyBlock.Reset();
             }
@@ -146,7 +150,6 @@ namespace Hahnium.Chip8
         private void Op2(ushort operands)
         {
             // Calls subroutine at NNN.
-            // TODO: Figure out stack bullshit
             stack[sp++] = this.Registers.PC;
             this.Registers.PC = operands;
         }
@@ -299,11 +302,11 @@ namespace Hahnium.Chip8
 
             if (this.platform.ppu.Draw(x, y, this.platform.ram.Slice(this.Registers.Index, height)))
             {
-                this.Registers.Variables[0xF] = 1;
+                this.Registers.Carry = 1;
             }
             else
             {
-                this.Registers.Variables[0xF] = 0;
+                this.Registers.Carry = 0;
             }
         }
 
@@ -357,7 +360,7 @@ namespace Hahnium.Chip8
                 case 0x1E:
                     // I += Vx  Adds VX to I. VF is set to 1 when there is a range overflow(I + VX > 0xFFF), and to 0 when there isn't.[c]
                     var newIndex = this.Registers.Index + this.Registers.Variables[x];
-                    this.Registers.Variables[0xF] = (byte)((newIndex > ushort.MaxValue) ? 1 : 0);
+                    this.Registers.Carry = (byte)((newIndex > ushort.MaxValue) ? 1 : 0);
                     this.Registers.Index = (ushort)newIndex;
                     break;
                 case 0x29:

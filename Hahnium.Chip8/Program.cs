@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace Hahnium.Chip8
+namespace Chip8
 {
     public class Program
     {
