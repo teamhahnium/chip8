@@ -72,7 +72,10 @@ namespace Hahnium.Chip8
             }
             lastFrame.Restart();
 
-            this.cpu.Registers.Delay--;
+            if (this.cpu.Registers.Delay > 0)
+            {
+                this.cpu.Registers.Delay--;
+            }
 
             if (TestMode)
             {
@@ -107,7 +110,7 @@ namespace Hahnium.Chip8
 {RenderRegister(0)}   {RenderRegister(4)}   {RenderRegister(8)}   {RenderRegister(12)}   {RenderAddress()}
 {RenderRegister(1)}   {RenderRegister(5)}   {RenderRegister(9)}   {RenderRegister(13)}   {RenderPC()}
 {RenderRegister(2)}   {RenderRegister(6)}   {RenderRegister(10)}   {RenderRegister(14)}   {RenderSP()}
-{RenderRegister(3)}   {RenderRegister(7)}   {RenderRegister(11)}   {RenderRegister(15)}
+{RenderRegister(3)}   {RenderRegister(7)}   {RenderRegister(11)}   {RenderRegister(15)}   {RenderDelay()}
 Clock {cycleCount / timer.Elapsed.TotalSeconds}
 FPS {frameCount / timer.Elapsed.TotalSeconds}");
 
@@ -163,6 +166,7 @@ FPS {frameCount / timer.Elapsed.TotalSeconds}");
         private string RenderPC() => $"PC #{this.cpu.Registers.PC:X4}";
 
         private string RenderSP() => $"SP #{this.cpu.sp:X4}";
+        private string RenderDelay() => $"D  #{this.cpu.Registers.Delay:X4}";
 
         private unsafe string RenderProgramCounter(short pcOffset)
         {
