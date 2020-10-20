@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -67,8 +68,9 @@ namespace Chip8
 
         public unsafe void Cycle()
         {
-            byte* memory = (byte*)memoryhandle.Pointer;
-            ushort opcode = (ushort)((*(memory + this.Registers.PC++) << 8) | *(memory + this.Registers.PC++));
+            byte* pc = (byte*)memoryhandle.Pointer + this.Registers.PC;
+            ushort opcode = BinaryPrimitives.ReadUInt16BigEndian(new ReadOnlySpan<byte>(pc, 2));
+            this.Registers.PC += 2;
 
             ushort operands = (ushort)(opcode & OperandsMask);
 
